@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <link rel="icon" href="logo.png" type="image/png">
+    <title>Documents</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+            text-align: center;
+            overflow: hidden; /* Prevent scrolling */
+        }
+        .bgimg {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('homebg1.jpg');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: -1;
+            transition: filter 0.3s ease;
+        }
+        .bgimg.blurred {
+            filter: blur(5px);
+        }
+        .header {
+            background-color: darkorange;
+            color: white;
+            padding: 10px 0;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 50px auto;
+            max-width: 1200px;
+        }
+        .box {
+            width: 250px;
+            height: 180px;
+            background-color: white;
+            border: 2px solid darkorange;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: darkorange;
+            transition: transform 0.3s, background-color 0.3s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        .box:hover {
+            background-color: darkorange;
+            color: white;
+            transform: scale(1.05);
+        }
+        .footer {
+            margin-top: 50px;
+            font-size: 14px;
+            color: #555;
+        }
+        #form-container {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%; /* Widen the container */
+            max-width: 1200px;
+            height: 90%; /* Ensure it fits within the viewport */
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            overflow-y: auto; /* Make the container scrollable */
+        }
+        #formContainer {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%; /* Widen the container */
+            max-width: 1200px;
+            height: 90%; /* Ensure it fits within the viewport */
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            overflow-y: auto; /* Make the container scrollable */
+        }
+        #formcontainer {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%; /* Widen the container */
+            max-width: 1200px;
+            height: 90%; /* Ensure it fits within the viewport */
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            overflow-y: auto; /* Make the container scrollable */
+        }
+        #form_container {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%; /* Widen the container */
+            max-width: 1200px;
+            height: 90%; /* Ensure it fits within the viewport */
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            overflow-y: auto; /* Make the container scrollable */
+        }
+
+        .form-wrapper {
+            padding: 20px;
+        }
+        .form-wrapper h1 {
+            color: darkorange;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        form {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Two columns for better layout */
+            gap: 10px 20px; /* Reduce the gap between labels and inputs */
+            align-items: center; /* Align labels and inputs vertically */
+        }
+        form label {
+            display: block;
+            color: black;
+            font-size: 14px;
+            margin-bottom: 5px; /* Add a small margin below labels */
+        }
+        form input, form select, form textarea {
+            width: 100%; /* Ensure inputs take full width of their column */
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        form textarea {
+            resize: none;
+        }
+        .section-title {
+            grid-column: span 2; /* Span across both columns */
+            font-weight: bold;
+            color: darkorange;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            color: white;
+            text-decoration: none;
+            font-size: 16x; /* Match the font size of the register button */
+            background-color: darkorange;
+            padding: 18px; /* Match the padding of the register button */
+            border-radius: 20px; /* Match the border radius of the register button */
+            cursor: pointer;
+            margin-right: 1100px;
+            margin-top: 15px;
+            border-radius: 5px;
+        }
+        .back-button:hover {
+            background-color: orange;
+        }
+        button[type="submit"] {
+            grid-column: span 2; /* Span across both columns */
+            margin-top: 10px;
+            background-color: darkorange;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button[type="submit"]:hover {
+            background-color: orange;
+        }
+        .evacuaid-button {
+    margin-top: 10px;
+    padding: 10px 20px;
+    background-color: darkorange;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+.evacuaid-button:hover {
+    background-color: orange;
+}
+    </style>
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyBbgjSdS5rQPUAiMaRKnBp6M7_P3TnzKqY",
+            authDomain: "evacuaid-51f47.firebaseapp.com",
+            databaseURL: "https://evacuaid-51f47-default-rtdb.firebaseio.com",
+            projectId: "evacuaid-51f47",
+            storageBucket: "evacuaid-51f47.firebasestorage.app",
+            messagingSenderId: "501712651017",
+            appId: "1:501712651017:web:903db65f79fc2c034509d8",
+            measurementId: "G-V1HLQZL3M7"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+    
+  
+        // Submit request to the database
+        function submitRequest(formType, formData) {
+            const requestId = database.ref().child("requests").push().key;
+            const request = {
+                userName: localStorage.getItem("currentUsername") || "Guest",
+                details: Object.fromEntries(formData.entries()), // Convert FormData to an object
+                status: "Pending",
+                formType: formType,
+                paymentConfirmed: false, // Add payment confirmation flag
+                timestamp: new Date().toISOString() // Add timestamp for sorting
+            };
+            database.ref("requests/" + requestId).set(request).then(() => {
+                localStorage.setItem("currentRequestId", requestId); // Store request ID for payment tracking
+                alert("Request submitted successfully!");
+                window.location.href = "Payment.html"; // Redirect to Payment.html
+            }).catch((error) => {
+                console.error("Error submitting request:", error);
+                alert("An error occurred while submitting your request. Please try again.");
+            });
+        }
+
+        // Hook into form submission
+        function redirectToPayment(event, formType) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            submitRequest(formType, formData);
+        }
+
+        function hideAllForms() {
+            // Hide all forms
+            document.getElementById('form-container').style.display = 'none';
+            document.getElementById('hakot-kuyagot-form').style.display = 'none';
+            document.getElementById('tents-chairs-form').style.display = 'none';
+            document.getElementById('lipat-bahay-form').style.display = 'none';
+        }
+
+        function showForm() {
+            hideAllForms(); // Hide other forms
+            document.getElementById('form-container').style.display = 'block';
+            document.getElementById('landing-page').style.display = 'none';
+            document.querySelector('.bgimg').classList.add('blurred'); // Add blur effect
+        }
+
+        function goBack() {
+            hideAllForms(); // Hide all forms
+            document.getElementById('landing-page').style.display = 'block';
+            document.querySelector('.bgimg').classList.remove('blurred'); // Remove blur effect
+        }
+
+        function showHakotKuyagotForm() {
+            hideAllForms(); // Hide other forms
+            document.getElementById('hakot-kuyagot-form').style.display = 'block';
+            document.getElementById('landing-page').style.display = 'none';
+            document.querySelector('.bgimg').classList.add('blurred');
+        }
+
+        function showTentsChairsForm() {
+            hideAllForms(); // Hide other forms
+            document.getElementById('tents-chairs-form').style.display = 'block';
+            document.getElementById('landing-page').style.display = 'none';
+            document.querySelector('.bgimg').classList.add('blurred');
+        }
+
+        function showLipatBahayForm() {
+            hideAllForms(); // Hide other forms
+            document.getElementById('lipat-bahay-form').style.display = 'block';
+            document.getElementById('landing-page').style.display = 'none';
+            document.querySelector('.bgimg').classList.add('blurred');
+        }
+    </script>
+</head>
+<body>
+    <div class="bgimg"></div>
+    <div id="landing-page">
+        <div class="header">Select a Document Type</div>
+        <button class="evacuaid-button" onclick="window.location.href='Index.html'">Go to EvacuAid</button>
+        <div class="container">
+            <div class="box" onclick="showForm()">General Document</div>
+            <div class="box" onclick="showHakotKuyagotForm()">Hakot Kuyagot</div>
+            <div class="box" onclick="showTentsChairsForm()">Tents & Chairs</div>
+            <div class="box" onclick="showLipatBahayForm()">Lipat Bahay</div>
+        </div>
+        <div class="footer">© 2025 All Rights Reserved</div>
+    </div>
+
+    <div id="form-container">
+        <button class="back-button" onclick="goBack()">Back</button>
+        <div class="form-wrapper">
+            <h1>General Request Form</h1>
+            <form onsubmit="redirectToPayment(event, 'General Document')">
+                <label for="first-name">First Name:</label>
+                <input type="text" id="first-name" name="first-name" required>
+
+                <label for="middle-name">Middle Name:</label>
+                <input type="text" id="middle-name" name="middle-name" required>
+
+                <label for="surname">Surname:</label>
+                <input type="text" id="surname" name="surname" required>
+
+                <label for="birthday">Birthday:</label>
+                <input type="date" id="birthday" name="birthday" required>
+
+                <label for="birthplace">Birthplace:</label>
+                <input type="text" id="birthplace" name="birthplace" required>
+
+                <label for="gender">Gender:</label>
+                <select id="gender" name="gender" required>
+                    <option value="">Select</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                </select>
+
+                <label for="citizenship">Citizenship:</label>
+                <input type="text" id="citizenship" name="citizenship" required>
+
+                <label for="address">Address:</label>
+                <textarea id="address" name="address" rows="2" required></textarea>
+
+                <label for="civil-status">Civil Status:</label>
+                <input type="text" id="civil-status" name="civil-status" required>
+
+                <label for="religion">Religion:</label>
+                <input type="text" id="religion" name="religion" required>
+
+                <label for="precinct-no">Precinct No.:</label>
+                <input type="text" id="precinct-no" name="precinct-no" required>
+
+                <label for="brgy-id">Brgy ID:</label>
+                <input type="text" id="brgy-id" name="brgy-id" required>
+
+                <label for="contact-no">Contact No.:</label>
+                <input type="tel" id="contact-no" name="contact-no" required>
+
+                <label for="occupation">Occupation:</label>
+                <input type="text" id="occupation" name="occupation" required>
+
+                <div class="section-title">In Case of Emergency</div>
+
+                <label for="emergency-name">Name:</label>
+                <input type="text" id="emergency-name" name="emergency-name" required>
+
+                <label for="relationship">Relationship:</label>
+                <input type="text" id="relationship" name="relationship" required>
+
+                <label for="emergency-contact-no">Contact No.:</label>
+                <input type="tel" id="emergency-contact-no" name="emergency-contact-no" required>
+
+                <label for="emergency-address">Contact Person Address:</label>
+                <textarea id="emergency-address" name="emergency-address" rows="2" required></textarea>
+
+                <div class="section-title">Select Form</div>
+
+                <label for="form-type">Form Type:</label>
+                <select id="form-type" name="form-type" required>
+                    <option value="">Select</option>
+                    <option value="excavation-clearance">Excavation Clearance</option>
+                    <option value="certificate-of-indigency">Certificate of Indigency</option>
+                    <option value="demolition-clearance">Demolition Clearance</option>
+                    <option value="first-time-jobseekers">First Time Jobseekers</option>
+                    <option value="construction-clearance">Construction Clearance</option>
+                    <option value="bail-bond">Bail Bond</option>
+                    <option value="burial-certification">Burial Certification (Namatay sa Bahay)</option>
+                    <option value="non-covid-burial">Non-Covid Patient Burial Certification</option>
+                    <option value="barangay-clearance">Barangay Clearance</option>
+                    <option value="barangay-residency">Barangay Residency Certificate</option>
+                    <option value="good-moral-character">Certificate of Good Moral Character</option>
+                    <option value="certificate-of-employment">Certificate of Employment</option>
+                    <option value="barangay-id">Barangay ID</option>
+                </select>
+
+                <button type="submit">Submit</button>
+            </form>
+        </div>
+    </div>
+    <div id="hakot-kuyagot-form" style="display: none;">
+        <div class="formContainer">
+            <button class="back-button" onclick="goBack()">Back</button>
+            <div class="form-wrapper">
+                <h1>Hakot Kuyagot Form</h1>
+                <form onsubmit="redirectToPayment(event, 'Hakot Kuyagot')">
+                    <label for="pangalan">Pangalan ng Nag Request:</label>
+                    <input type="text" id="pangalan" name="pangalan" required>
+
+                    <label for="petsa">Petsa ng Pag Request:</label>
+                    <input type="date" id="petsa" name="petsa" required>
+
+                    <label for="lugar">Lugar ng Paghahakutan:</label>
+                    <input type="text" id="lugar" name="lugar" required>
+
+                    <label for="contact-no">Contact No.:</label>
+                    <input type="tel" id="contact-no" name="contact-no" required>
+
+                    <label for="uri">Uri ng Kuyagot:</label>
+                    <input type="text" id="uri" name="uri" required>
+
+                    <button type="submit">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="tents-chairs-form" style="display: none;">
+        <div class="form-container">
+            <button class="back-button" onclick="goBack()">Back</button>
+            <div class="form-wrapper">
+                <h1>Tents & Chairs Form</h1>
+                <form onsubmit="redirectToPayment(event, 'Tents & Chairs')">
+                    <label for="pangalan">Pangalan:</label>
+                    <input type="text" id="pangalan" name="pangalan" required>
+
+                    <label for="address">Address:</label>
+                    <textarea id="address" name="address" rows="2" required></textarea>
+
+                    <label for="contact-no">Contact No.:</label>
+                    <input type="tel" id="contact-no" name="contact-no" required>
+
+                    <label for="date">Date:</label>
+                    <input type="date" id="date" name="date" required>
+
+                    <label for="chairs">No. of Chairs:</label>
+                    <input type="number" id="chairs" name="chairs" required>
+
+                    <label for="tables">No. of Tables:</label>
+                    <input type="number" id="tables" name="tables" required>
+
+                    <label for="fans">No. of Fans:</label>
+                    <input type="number" id="fans" name="fans" required>
+
+                    <label for="tents">No. of Tents:</label>
+                    <input type="number" id="tents" name="tents" required>
+
+                    <label for="venue">Venue:</label>
+                    <input type="text" id="venue" name="venue" required>
+
+                    <label for="event">Event:</label>
+                    <input type="text" id="event" name="event" required>
+
+                    <label for="time">Time:</label>
+                    <input type="time" id="time" name="time" required>
+
+                    <button type="submit">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="lipat-bahay-form" style="display: none;">
+        <div class="form-container">
+            <button class="back-button" onclick="goBack()">Back</button>
+            <div class="form-wrapper">
+                <h1>Lipat Bahay Form</h1>
+                <form onsubmit="redirectToPayment(event, 'Lipat Bahay')">
+                    <label for="pangalan">Pangalan:</label>
+                    <input type="text" id="pangalan" name="pangalan" required>
+
+                    <label for="lugar">Lugar ng Pinanggagalingan:</label>
+                    <input type="text" id="lugar" name="lugar" required>
+
+                    <label for="contact-no">Numero ng Telepono:</label>
+                    <input type="tel" id="contact-no" name="contact-no" required>
+
+                    <label for="uri-sasakyan">Uri ng Sasakyan:</label>
+                    <input type="text" id="uri-sasakyan" name="uri-sasakyan" required>
+
+                    <label for="plaka">Plaka #:</label>
+                    <input type="text" id="plaka" name="plaka" required>
+
+                    <label for="taga-maneho">Taga Maneho:</label>
+                    <input type="text" id="taga-maneho" name="taga-maneho" required>
+
+                    <button type="submit">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

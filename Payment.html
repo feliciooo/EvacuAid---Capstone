@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+            text-align: center;
+        }
+        .container {
+            margin: 50px auto;
+            max-width: 600px;
+            padding: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            color: darkorange;
+        }
+        img {
+            width: 300px;
+            height: auto;
+            margin: 20px 0;
+        }
+        .upload-container {
+            margin: 20px 0;
+        }
+        input[type="file"] {
+            display: block;
+            margin: 10px auto;
+        }
+        button {
+            background-color: darkorange;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: orange;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Payment</h1>
+        <p>Please scan the QR code below to make your payment via GCash.</p>
+        <img src="QRCode.jpg" alt="QR Code for Payment">
+        <div class="upload-container">
+            <p>After completing the payment, upload your payment screenshot for confirmation:</p>
+            <input type="file" id="payment-screenshot" accept="image/*">
+            <button onclick="confirmPayment()">Payment Done</button>
+        </div>
+    </div>
+    <script>
+        // Ensure Firebase is initialized
+        const firebaseConfig = {
+            apiKey: "AIzaSyBbgjSdS5rQPUAiMaRKnBp6M7_P3TnzKqY",
+            authDomain: "evacuaid-51f47.firebaseapp.com",
+            databaseURL: "https://evacuaid-51f47-default-rtdb.firebaseio.com",
+            projectId: "evacuaid-51f47",
+            storageBucket: "evacuaid-51f47.firebasestorage.app",
+            messagingSenderId: "501712651017",
+            appId: "1:501712651017:web:903db65f79fc2c034509d8",
+            measurementId: "G-V1HLQZL3M7"
+        };
+
+        try {
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            const database = firebase.database();
+        } catch (error) {
+            console.error("Firebase initialization error:", error);
+            alert("An error occurred while initializing Firebase. Please try again later.");
+        }
+
+        function confirmPayment() {
+            const fileInput = document.getElementById('payment-screenshot');
+            if (fileInput.files.length === 0) {
+                alert('Please upload your payment screenshot before confirming.');
+                return;
+            }
+
+            const requestId = localStorage.getItem("currentRequestId");
+            if (!requestId) {
+                alert("No request ID found. Please try again.");
+                return;
+            }
+
+            database.ref("requests/" + requestId).update({ paymentConfirmed: true })
+                .then(() => {
+                    alert('Payment screenshot uploaded successfully. Your payment will be verified by the admin.');
+                    alert('Request submitted!');
+                    window.location.href = 'AdminRequestTab.html';
+                })
+                .catch((error) => {
+                    console.error("Error confirming payment:", error);
+                    alert("An error occurred while confirming your payment. Please try again.");
+                });
+        }
+    </script>
+</body>
+</html>
