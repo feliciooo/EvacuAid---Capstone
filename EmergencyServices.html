@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Services</title>
+    <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+        }
+
+        .bgimg {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('homebg1.jpg');
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: -1;
+        }
+
+        .navbar-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px 20px;
+            background: linear-gradient(to bottom, #FFA500, darkorange);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            border-radius: 50px;
+            padding: 10px 20px;
+        }
+
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 20px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .navbar a:hover {
+            background-color: #FFAD60;
+            transform: scale(1.1);
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 50px auto;
+            max-width: 800px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+        }
+
+        #map {
+            width: 100%;
+            height: 500px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        button {
+            background-color: darkorange;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background-color: orange;
+            transform: scale(1.05);
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        .reset-map-button, .send-location-button {
+            background-color: darkorange;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .reset-map-button:hover, .send-location-button:hover {
+            background-color: orange;
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="bgimg"></div>
+    <div class="navbar-container">
+        <div class="navbar">
+            <a href="index.html">Home</a>
+            <a href="#map-section">Map</a>
+        </div>
+    </div>
+
+    <div id="map-section" class="container">
+        <h1>Emergency Services Map</h1>
+        <div id="map"></div>
+        <div class="modal-buttons">
+            <button class="reset-map-button" onclick="resetMap()">Reset Map</button>
+            <button class="send-location-button" onclick="sendLocation()">Send Location</button>
+        </div>
+    </div>
+
+    <div id="profile" style="display: none;">
+        <div class="container">
+            <h1>My Profile</h1>
+            <div id="profile-info">
+                <!-- User profile information will be dynamically added here -->
+            </div>
+            <button id="edit-profile-button" onclick="toggleEditProfile()">Edit Profile</button>
+            <div id="edit-profile-form" style="display: none;">
+                <form onsubmit="saveProfile(event)">
+                    <input type="text" id="edit-fullName" placeholder="Full Name">
+                    <input type="date" id="edit-birthday" placeholder="Birthday">
+                    <input type="text" id="edit-phone" placeholder="Phone">
+                    <input type="text" id="edit-address" placeholder="Address">
+                    <button type="submit">Save</button>
+                    <button type="button" onclick="toggleEditProfile()">Cancel</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBbgjSdS5rQPUAiMaRKnBp6M7_P3TnzKqY",
+            authDomain: "evacuaid-51f47.firebaseapp.com",
+            databaseURL: "https://evacuaid-51f47-default-rtdb.firebaseio.com",
+            projectId: "evacuaid-51f47",
+            storageBucket: "evacuaid-51f47.appspot.com",
+            messagingSenderId: "501712651017",
+            appId: "1:501712651017:web:903db65f79fc2c034509d8",
+            measurementId: "G-V1HLQZL3M7"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        let map, routingControl, startMarker, targetMarker;
+
+        // Initialize the map
+        function initializeMap() {
+            map = L.map('map').setView([14.634607, 121.085753], 13);
+
+            // Add OpenStreetMap tiles
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+
+            // Add a starting marker at the default location
+            startMarker = L.marker([14.634607, 121.085753], { draggable: true })
+                .addTo(map)
+                .bindPopup('Start Point: Barangay Tañong, Marikina City')
+                .openPopup();
+
+            // Add routing control (initially without a target waypoint)
+            routingControl = L.Routing.control({
+                waypoints: [startMarker.getLatLng()],
+                routeWhileDragging: false,
+                show: false,
+                addWaypoints: false,
+                lineOptions: {
+                    styles: [{ color: 'blue', weight: 4, opacity: 0.7 }]
+                }
+            }).addTo(map);
+
+            // Allow the user to pin a target waypoint
+            map.on('click', (e) => {
+                if (targetMarker) {
+                    map.removeLayer(targetMarker); // Remove the previous target marker
+                }
+
+                // Add a new target marker at the clicked location
+                targetMarker = L.marker(e.latlng, { draggable: true })
+                    .addTo(map)
+                    .bindPopup('Target Point')
+                    .openPopup();
+
+                // Update the routing control with the new waypoints
+                routingControl.setWaypoints([startMarker.getLatLng(), targetMarker.getLatLng()]);
+            });
+        }
+
+        // Reset the map
+        function resetMap() {
+            map.setView([14.634607, 121.085753], 13); // Reset to default view
+
+            // Reset the start marker position
+            startMarker.setLatLng([14.634607, 121.085753]);
+
+            // Remove the target marker if it exists
+            if (targetMarker) {
+                map.removeLayer(targetMarker);
+                targetMarker = null;
+            }
+
+            // Reset the routing control waypoints
+            routingControl.setWaypoints([startMarker.getLatLng()]);
+        }
+
+        // Send the location
+        function sendLocation() {
+            if (!targetMarker) {
+                alert("Please select a target location on the map.");
+                return;
+            }
+
+            const targetLatLng = targetMarker.getLatLng();
+            console.log("Target Location:", targetLatLng);
+
+            // Fetch the current user's profile information
+            let currentUsername = localStorage.getItem("currentUsername");
+            if (!currentUsername) {
+                alert("You must be logged in to send a rescue request.");
+                return;
+            }
+
+            currentUsername = currentUsername.toLowerCase(); // Normalize to lowercase
+            console.log("Current Username:", currentUsername);
+
+            // Fetch user profile from Firebase
+            database.ref("users").orderByChild("username").equalTo(currentUsername).once("value").then((snapshot) => {
+                console.log("Firebase Query Result:", snapshot.val());
+                if (!snapshot.exists()) {
+                    alert("User profile not found.");
+                    return;
+                }
+
+                const userData = Object.values(snapshot.val())[0];
+                console.log("User Data:", userData);
+
+                const rescueRequestId = database.ref("rescue-requests").push().key;
+
+                const rescueRequest = {
+                    fullName: userData.fullName || "Unknown User",
+                    email: userData.email || "No Email Provided",
+                    phone: userData.phone || "No Phone Number Provided",
+                    address: `Latitude: ${targetLatLng.lat}, Longitude: ${targetLatLng.lng}`,
+                    latitude: targetLatLng.lat,
+                    longitude: targetLatLng.lng,
+                    timestamp: new Date().toISOString(),
+                    status: "Pending Rescue"
+                };
+
+                database.ref("rescue-requests/" + rescueRequestId).set(rescueRequest)
+                    .then(() => {
+                        alert("Rescue request sent successfully!");
+                    })
+                    .catch((error) => {
+                        console.error("Error sending rescue request:", error);
+                        alert("An error occurred while sending the rescue request.");
+                    });
+            }).catch((error) => {
+                console.error("Error fetching user profile:", error);
+                alert("An error occurred while fetching your profile.");
+            });
+        }
+
+        // Load user profile
+        function loadUserProfile() {
+            const currentUsername = localStorage.getItem("currentUsername"); // Get the logged-in user's username
+            if (!currentUsername) {
+                alert("You must be logged in to view your profile.");
+                return;
+            }
+
+            console.log("Current Username:", currentUsername); // Debugging log
+
+            // Fetch user data from Firebase
+            database.ref("users").orderByChild("username").equalTo(currentUsername).once("value").then((snapshot) => {
+                if (!snapshot.exists()) {
+                    alert("User profile not found.");
+                    return;
+                }
+
+                const userData = Object.values(snapshot.val())[0]; // Get the first matching user profile
+                console.log("User Data:", userData); // Debugging log
+
+                // Populate the profile section with user data
+                const profileInfo = document.getElementById("profile-info");
+                profileInfo.innerHTML = `
+                    <p><strong>Full Name:</strong> ${userData.fullName || "N/A"}</p>
+                    <p><strong>Birthday:</strong> ${userData.birthday || "N/A"}</p>
+                    <p><strong>Phone:</strong> ${userData.phone || "N/A"}</p>
+                    <p><strong>Address:</strong> ${userData.address || "N/A"}</p>
+                `;
+
+                // Show the profile info and hide the edit form
+                profileInfo.style.display = "block";
+                document.getElementById("edit-profile-form").style.display = "none";
+            }).catch((error) => {
+                console.error("Error fetching user profile:", error);
+                alert("An error occurred while loading your profile.");
+            });
+        }
+
+        // Login user
+        function loginUser(event) {
+            event.preventDefault(); // Prevent form submission
+
+            const usernameOrEmail = document.getElementById("login-username").value;
+            const password = document.getElementById("login-password").value;
+
+            // Fetch user data from Firebase
+            database.ref("users").once("value").then((snapshot) => {
+                let userFound = false;
+
+                snapshot.forEach((childSnapshot) => {
+                    const user = childSnapshot.val();
+                    if ((user.username === usernameOrEmail || user.email === usernameOrEmail) && user.password === password) {
+                        userFound = true;
+
+                        // Store the username in localStorage
+                        localStorage.setItem("currentUsername", user.username);
+                        localStorage.setItem("isLoggedIn", "true");
+
+                        alert("Login successful!");
+                        showSection("home"); // Redirect to the home section
+                    }
+                });
+
+                if (!userFound) {
+                    alert("Invalid username or password.");
+                }
+            }).catch((error) => {
+                console.error("Error checking user credentials:", error);
+                alert("An error occurred. Please try again.");
+            });
+        }
+
+        // Initialize the map when the page loads
+        document.addEventListener('DOMContentLoaded', initializeMap);
+    </script>
+</body>
+</html>

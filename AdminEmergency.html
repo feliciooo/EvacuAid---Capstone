@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Evacuation Geo-Registration</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #efefef;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+ 
+    h2 {
+      color: #ff8c00;
+      margin-top: 30px;
+      font-size: 32px;
+      font-weight: bold;
+    }
+ 
+    button {
+      background-color: #ff8c00;
+      color: white;
+      font-size: 16px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 20px 0;
+      align-items: end;
+    }
+ 
+    button:hover {
+      background-color: #e07b00;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+    }
+ 
+    #map {
+      width: 80%;
+      height: 400px;
+      margin-top: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    }
+ 
+    #userList {
+      width: 80%;
+      max-width: 1200px;
+      margin-top: 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+ 
+    .user-card {
+      background-color: #ffffff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      text-align: center;
+    }
+ 
+    .user-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+ 
+    .user-card img {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 15px;
+      border: 3px solid #ffa500;
+    }
+ 
+    .user-card h3, .user-card p {
+      margin: 6px 0;
+    }
+ 
+    .user-card span {
+      font-weight: bold;
+      color: #ff8c00;
+      cursor: pointer;
+      font-size: 14px;
+      text-decoration: underline;
+    }
+ 
+    .edit-btn, .delete-btn {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+ 
+    .edit-btn {
+      background-color: #ffa500;
+      color: white;
+    }
+ 
+    .edit-btn:hover {
+      background-color: #e07b00;
+    }
+ 
+    .delete-btn {
+      background-color: #ff4500;
+      color: white;
+    }
+ 
+    .delete-btn:hover {
+      background-color: #e63900;
+    }
+ 
+    @media (max-width: 768px) {
+      #map, #userList {
+        width: 90%;
+      }
+    }
+ 
+    #backBtn {
+      position: absolute;
+      top: 5px;
+      right: 20px;
+      background-color: #ff8c00;
+      color: white;
+      font-size: 16px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+ 
+    #backBtn:hover {
+      background-color: #e07b00;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15);
+    }
+  </style>
+</head>
+<body>
+  <h2>Admin Dashboard - Registered Users</h2>
+  <button id="backBtn">Back</button>
+  <div id="map"></div>
+  <div id="userList"></div>
+ 
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+ 
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyBbgjSdS5rQPUAiMaRKnBp6M7_P3TnzKqY",
+      authDomain: "evacuaid-51f47.firebaseapp.com",
+      databaseURL: "https://evacuaid-51f47-default-rtdb.firebaseio.com",
+      projectId: "evacuaid-51f47",
+      storageBucket: "evacuaid-51f47.appspot.com",
+      messagingSenderId: "501712651017",
+      appId: "1:501712651017:web:903db65f79fc2c034509d8",
+      measurementId: "G-V1HLQZL3M7"
+    };
+ 
+    const geocodifyApiKey = 'gDKZAVZZYjR13N1l2tpJfIRfREJI3x7F';
+ 
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+ 
+    let map, routingControl, startMarker, targetMarker;
+
+    function initializeMap() {
+        map = L.map('map').setView([14.634607, 121.085753], 13);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        startMarker = L.marker([14.634607, 121.085753], { draggable: true })
+            .addTo(map)
+            .bindPopup('Start Point: Barangay Tañong, Marikina City')
+            .openPopup();
+
+        routingControl = L.Routing.control({
+            waypoints: [startMarker.getLatLng()],
+            routeWhileDragging: false,
+            show: false,
+            addWaypoints: false,
+            lineOptions: {
+                styles: [{ color: 'blue', weight: 4, opacity: 0.7 }]
+            }
+        }).addTo(map);
+
+        map.on('click', (e) => {
+            if (targetMarker) {
+                map.removeLayer(targetMarker); 
+            }
+
+            targetMarker = L.marker(e.latlng, { draggable: true })
+                .addTo(map)
+                .bindPopup('Target Point')
+                .openPopup();
+
+            routingControl.setWaypoints([startMarker.getLatLng(), targetMarker.getLatLng()]);
+        });
+    }
+
+    function resetMap() {
+        map.setView([14.634607, 121.085753], 13); 
+
+        startMarker.setLatLng([14.634607, 121.085753]);
+
+        if (targetMarker) {
+            map.removeLayer(targetMarker);
+            targetMarker = null;
+        }
+
+        // Reset the routing control waypoints
+        routingControl.setWaypoints([startMarker.getLatLng()]);
+    }
+
+   
+
+    // Initialize the map when the page loads
+    document.addEventListener('DOMContentLoaded', initializeMap);
+
+    function fetchUsers() {
+        database.ref('users').once('value').then(snapshot => {
+            const users = snapshot.val();
+            const userList = document.getElementById('userList');
+            userList.innerHTML = '';
+
+            for (let id in users) {
+                const user = users[id];
+                const userDiv = document.createElement('div');
+                userDiv.classList.add('user-card');
+                userDiv.innerHTML = `
+                    <img src="default.jpg" alt="User Avatar">
+                    <h3>${user.fullName}</h3>
+                    <p><strong>Email:</strong> ${user.email}</p>
+                    <p><strong>Phone:</strong> ${user.phone}</p>
+                    <button class="edit-btn" onclick="editUser('${id}', '${user.fullName}', '${user.email}', '${user.phone}')">Edit</button>
+                    <button class="delete-btn" onclick="deleteUser('${id}')">Delete</button>
+                `;
+                userList.appendChild(userDiv);
+            }
+        });
+
+        // Fetch rescue requests
+        database.ref('rescue-requests').once('value').then(snapshot => {
+            const rescueRequests = snapshot.val();
+            const userList = document.getElementById('userList');
+
+            for (let id in rescueRequests) {
+                const request = rescueRequests[id];
+                const requestDiv = document.createElement('div');
+                requestDiv.classList.add('user-card');
+                requestDiv.innerHTML = `
+                    <img src="default.jpg" alt="User Avatar">
+                    <h3>${request.fullName}</h3>
+                    <p><strong>Email:</strong> ${request.email}</p>
+                    <p><strong>Phone:</strong> ${request.phone}</p>
+                    <p><strong>Address:</strong> ${request.address}</p>
+                    <p><strong>Status:</strong> ${request.status}</p>
+                    <button class="delete-btn" onclick="deleteRescueRequest('${id}')">Mark as Resolved</button>
+                    <button class="edit-btn" onclick="viewOnMap(${request.latitude}, ${request.longitude})">View on Map</button>
+                `;
+                userList.appendChild(requestDiv);
+            }
+        });
+    }
+
+    function deleteRescueRequest(id) {
+        if (confirm('Are you sure you want to mark this rescue request as resolved?')) {
+            database.ref('rescue-requests/' + id).remove().then(() => {
+                alert('Rescue request marked as resolved!');
+                fetchUsers(); // Refresh the list
+            }).catch(() => alert('Error marking rescue request as resolved!'));
+        }
+    }
+
+    function geocodeAddress(address) {
+      const geocodeUrl = `https://api.geocodify.com/v2/geocode?api_key=${geocodifyApiKey}&q=${encodeURIComponent(address)}&limit=1&type=address&country=PH`;
+ 
+      fetch(geocodeUrl)
+        .then(response => response.json())
+        .then(data => {
+          if (data.response && data.response.features && data.response.features.length > 0) {
+            const location = data.response.features[0].geometry.coordinates;
+            const lat = location[1];
+            const lon = location[0];
+            map.setView([lat, lon], 14);
+            marker.setLatLng([lat, lon]);
+          } else {
+            alert('Address not found!');
+          }
+        })
+        .catch(() => alert('Geocoding failed!'));
+    }
+ 
+    function editUser(id, fullName, email, phone) {
+      const newFullName = prompt('Edit Full Name:', fullName);
+      const newEmail = prompt('Edit Email:', email);
+      const newPhone = prompt('Edit Phone:', phone);
+ 
+      if (newFullName && newEmail && newPhone) {
+        database.ref('users/' + id).update({
+          fullName: newFullName,
+          email: newEmail,
+          phone: newPhone
+        }).then(() => {
+          alert('User updated!');
+          fetchUsers();
+        }).catch(() => alert('Error updating user!'));
+      }
+    }
+ 
+    function deleteUser(id) {
+      if (confirm('Are you sure you want to delete this user?')) {
+        database.ref('users/' + id).remove().then(() => {
+          alert('User deleted!');
+          fetchUsers();
+        }).catch(() => alert('Error deleting user!'));
+      }
+    }
+
+    function viewOnMap(lat, lng) {
+        if (routingControl) {
+            routingControl.setWaypoints([
+                startMarker.getLatLng(),
+                L.latLng(lat, lng)
+            ]);
+        } else {
+            alert("Map is not initialized yet.");
+        }
+    }
+ 
+    fetchUsers();
+ 
+    document.getElementById('backBtn').onclick = function() {
+      window.location.href = 'AdminRequestTab.html'; // Redirect to AdminRequestTab.html
+    };
+  </script>
+</body>
+</html>
